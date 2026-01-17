@@ -1,15 +1,20 @@
 import { Router, Request, Response } from "express";
-import { Booking } from "./types";
+import { Booker, Booking } from "./types";
 import { randomUUID } from "crypto";
 
 const router = Router();
 const bookings: Booking[] = [];
+const bookers: Booker[] = [];
 
 /**
  * CREATE booking
  */
 router.post("/bookings", (req: Request, res: Response) => {
-  const { roomId, startTime, endTime } = req.body;
+  const { roomId, startTime, endTime, booker } = req.body;
+
+  if (!booker?.name || !booker?.email) {
+    return res.status(400).json({ message: "Booker name and email are required" });
+  }
 
   const start = new Date(startTime);
   const end = new Date(endTime);
@@ -34,15 +39,30 @@ router.post("/bookings", (req: Request, res: Response) => {
     return res.status(400).json({ message: "Room is already booked for this time" });
   }
 
-  const booking: Booking = {
+  // Create booker
+  const newBooker: Booker = {
+    id: randomUUID(),
+    name: booker.name,
+    email: booker.email,
+  };
+
+  bookers.push(newBooker);
+
+  // Create booking
+  const newBooking: Booking = {
     id: randomUUID(),
     roomId,
+    bookerId: newBooker.id,
     startTime: start,
     endTime: end,
   };
 
-  bookings.push(booking);
-  res.status(201).json(booking);
+  bookings.push(newBooking);
+
+  res.status(201).json({
+    booking: newBooking,
+    booker: newBooker,
+  });
 });
 
 /**
