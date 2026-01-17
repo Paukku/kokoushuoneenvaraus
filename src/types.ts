@@ -1,5 +1,5 @@
 export interface Booking {
-  id: string;
+  uuid: string;
   roomId: string;
   bookerId: string;
   startTime: Date;
@@ -7,7 +7,7 @@ export interface Booking {
 }
 
 export interface Booker {
-  id: string;
+  uuid: string;
   name: string;
   email: string;
 }

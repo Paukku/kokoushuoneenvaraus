@@ -41,7 +41,7 @@ router.post("/bookings", (req: Request, res: Response) => {
 
   // Create booker
   const newBooker: Booker = {
-    id: randomUUID(),
+    uuid: randomUUID(),
     name: booker.name,
     email: booker.email,
   };
@@ -50,9 +50,9 @@ router.post("/bookings", (req: Request, res: Response) => {
 
   // Create booking
   const newBooking: Booking = {
-    id: randomUUID(),
+    uuid: randomUUID(),
     roomId,
-    bookerId: newBooker.id,
+    bookerId: newBooker.uuid,
     startTime: start,
     endTime: end,
   };
@@ -69,7 +69,7 @@ router.post("/bookings", (req: Request, res: Response) => {
  * DELETE booking
  */
 router.delete("/bookings/:id", (req: Request, res: Response) => {
-  const index = bookings.findIndex(b => b.id === req.params.id);
+  const index = bookings.findIndex(b => b.uuid === req.params.id);
 
   if (index === -1) {
     return res.status(404).json({ message: "Booking not found" });
