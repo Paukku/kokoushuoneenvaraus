@@ -1,12 +1,13 @@
 import express from "express";
-import routes from "./routes";
+import bookingRoutes from "./routes/bookingRoutes";
+import { errorHandler } from "./errors/ErrorHandler";
 
 const app = express();
 app.use(express.json());
 
-app.use("/api", routes);
+app.use("/api", bookingRoutes);
+app.use(errorHandler);
 
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
 });

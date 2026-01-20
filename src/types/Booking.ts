@@ -5,9 +5,3 @@ export interface Booking {
   startTime: Date;
   endTime: Date;
 }
-
-export interface Booker {
-  uuid: string;
-  name: string;
-  email: string;
-}
