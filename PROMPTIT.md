@@ -568,3 +568,208 @@ Yhdistetään booking + booker
 Lisätään expandBooker-query-parametri
 Käytännössä työnäyte olisi valmis, siisti ja ammattimainen 💪
 Haluatko, että teen sen?
+
+--
+Prompti: Haluan, että seuraavaksi virheiden käsittely ja business logiikka eristetään omiksi tiedostoksi.
+
+AI:
+Tämä on erinomainen seuraava askel 💙
+Tässä kohtaa mennään jo selvästi “junior → mid” -ajatteluun: erotellaan vastuut, tehdään koodista testattavaa ja helposti ylläpidettävää.
+Alla annan selkeän, käytännöllisen rakenteen, joka ei ole ylisuurta “enterprise-himmeliä”, mutta näyttää arvioijan silmissä todella hyvältä.
+
+🎯 Tavoite
+
+
+Routet = vain HTTP + request/response
+
+
+Business-logiikka = omassa service-tiedostossa
+
+
+Virheenkäsittely = keskitetty
+
+
+Helppo lisätä testit myöhemmin
+
+
+
+📁 Uusi projektirakenne
+src/
+├── index.ts
+├── routes/
+│   └── bookingRoutes.ts
+├── services/
+│   └── bookingService.ts
+├── errors/
+│   ├── AppError.ts
+│   └── errorHandler.ts
+├── data/
+│   └── store.ts
+├── types/
+│   ├── Booking.ts
+│   └── Booker.ts
+
+
+1️⃣ Keskitetty virheluokka
+errors/AppError.ts
+export class AppError extends Error {
+  constructor(
+    public message: string,
+    public statusCode: number = 400
+  ) {
+    super(message);
+  }
+}
+
+
+2️⃣ Error middleware
+errors/errorHandler.ts
+import { Request, Response, NextFunction } from "express";
+import { AppError } from "./AppError";
+
+export const errorHandler = (
+  err: Error,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+) => {
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({ message: err.message });
+  }
+
+  console.error(err);
+  res.status(500).json({ message: "Internal server error" });
+};
+
+
+3️⃣ In-memory data erikseen
+data/store.ts
+import { Booking } from "../types/Booking";
+import { Booker } from "../types/Booker";
+
+export const bookings: Booking[] = [];
+export const bookers: Booker[] = [];
+
+
+4️⃣ Business-logiikka serviceen
+services/bookingService.ts
+import { randomUUID } from "crypto";
+import { bookings, bookers } from "../data/store";
+import { Booking } from "../types/Booking";
+import { Booker } from "../types/Booker";
+import { AppError } from "../errors/AppError";
+
+interface CreateBookingInput {
+  roomId: string;
+  startTime: string;
+  endTime: string;
+  booker: {
+    name: string;
+    email: string;
+  };
+}
+
+export const createBooking = (input: CreateBookingInput) => {
+  const { roomId, startTime, endTime, booker } = input;
+
+  if (!booker?.name || !booker?.email) {
+    throw new AppError("Booker name and email are required");
+  }
+
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const now = new Date();
+
+  if (start >= end) {
+    throw new AppError("Start time must be before end time");
+  }
+
+  if (start < now) {
+    throw new AppError("Booking cannot be in the past");
+  }
+
+  const overlapping = bookings.some(b =>
+    b.roomId === roomId &&
+    start < b.endTime &&
+    end > b.startTime
+  );
+
+  if (overlapping) {
+    throw new AppError("Room is already booked for this time");
+  }
+
+  const newBooker: Booker = {
+    id: randomUUID(),
+    name: booker.name,
+    email: booker.email,
+  };
+
+  bookers.push(newBooker);
+
+  const newBooking: Booking = {
+    id: randomUUID(),
+    roomId,
+    bookerId: newBooker.id,
+    startTime: start,
+    endTime: end,
+  };
+
+  bookings.push(newBooking);
+
+  return {
+    booking: newBooking,
+    booker: newBooker,
+  };
+};
+
+
+5️⃣ Route on nyt todella siisti
+routes/bookingRoutes.ts
+import { Router } from "express";
+import { createBooking } from "../services/bookingService";
+
+const router = Router();
+
+router.post("/bookings", (req, res, next) => {
+  try {
+    const result = createBooking(req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;
+
+
+6️⃣ Middleware käyttöön
+index.ts
+import express from "express";
+import bookingRoutes from "./routes/bookingRoutes";
+import { errorHandler } from "./errors/errorHandler";
+
+const app = express();
+app.use(express.json());
+
+app.use("/api", bookingRoutes);
+app.use(errorHandler);
+
+app.listen(3000, () => {
+  console.log("Server running on port 3000");
+});
+
+
+💡 Miksi tämä on todella hyvä ratkaisu?
+✔️ Routet ovat luettavia
+✔️ Business-logiikka testattavissa ilman Expressiä
+✔️ Virheet yhdessä paikassa
+✔️ Helppo siirtyä tietokantaan
+✔️ Näyttää ammattimaiselta työnäytteessä
+
+Seuraava luonteva askel (suosittelen):
+🧪 Unit-testit bookingServicelle (Jest)
+🔐 Uniikki email -sääntö varaajalle
+🔄 Update / cancel booking serviceen
+🗄 Prisma + SQL + transaktiot
+
+Sano vain mihin jatketaan – tämä on jo todella vahvaa tekemistä 💙
