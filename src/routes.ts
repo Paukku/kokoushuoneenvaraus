@@ -83,8 +83,15 @@ router.delete("/bookings/:id", (req: Request, res: Response) => {
  * LIST bookings by room
  */
 router.get("/rooms/:roomId/bookings", (req: Request, res: Response) => {
-  const roomBookings = bookings.filter(b => b.roomId === req.params.roomId);
-  res.json(roomBookings);
+  const result = bookings
+  .filter(b => b.roomId === req.params.roomId)
+  .map(b => {
+    if (req.query.expandBooker === "true") {
+      return { ...b, booker: bookers.find(u => u.uuid === b.bookerId) };
+    }
+    return b;
+  });
+  res.json(result);
 });
 
 export default router;
