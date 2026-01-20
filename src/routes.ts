@@ -1,15 +1,20 @@
 import { Router, Request, Response } from "express";
-import { Booking } from "./types";
+import { Booker, Booking } from "./types";
 import { randomUUID } from "crypto";
 
 const router = Router();
 const bookings: Booking[] = [];
+const bookers: Booker[] = [];
 
 /**
  * CREATE booking
  */
 router.post("/bookings", (req: Request, res: Response) => {
-  const { roomId, startTime, endTime } = req.body;
+  const { roomId, startTime, endTime, booker } = req.body;
+
+  if (!booker?.name || !booker?.email) {
+    return res.status(400).json({ message: "Booker name and email are required" });
+  }
 
   const start = new Date(startTime);
   const end = new Date(endTime);
@@ -34,22 +39,37 @@ router.post("/bookings", (req: Request, res: Response) => {
     return res.status(400).json({ message: "Room is already booked for this time" });
   }
 
-  const booking: Booking = {
-    id: randomUUID(),
+  // Create booker
+  const newBooker: Booker = {
+    uuid: randomUUID(),
+    name: booker.name,
+    email: booker.email,
+  };
+
+  bookers.push(newBooker);
+
+  // Create booking
+  const newBooking: Booking = {
+    uuid: randomUUID(),
     roomId,
+    bookerId: newBooker.uuid,
     startTime: start,
     endTime: end,
   };
 
-  bookings.push(booking);
-  res.status(201).json(booking);
+  bookings.push(newBooking);
+
+  res.status(201).json({
+    booking: newBooking,
+    booker: newBooker,
+  });
 });
 
 /**
  * DELETE booking
  */
 router.delete("/bookings/:id", (req: Request, res: Response) => {
-  const index = bookings.findIndex(b => b.id === req.params.id);
+  const index = bookings.findIndex(b => b.uuid === req.params.id);
 
   if (index === -1) {
     return res.status(404).json({ message: "Booking not found" });
@@ -63,8 +83,15 @@ router.delete("/bookings/:id", (req: Request, res: Response) => {
  * LIST bookings by room
  */
 router.get("/rooms/:roomId/bookings", (req: Request, res: Response) => {
-  const roomBookings = bookings.filter(b => b.roomId === req.params.roomId);
-  res.json(roomBookings);
+  const result = bookings
+  .filter(b => b.roomId === req.params.roomId)
+  .map(b => {
+    if (req.query.expandBooker === "true") {
+      return { ...b, booker: bookers.find(u => u.uuid === b.bookerId) };
+    }
+    return b;
+  });
+  res.json(result);
 });
 
 export default router;
